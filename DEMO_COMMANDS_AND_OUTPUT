@@ -80,7 +80,7 @@ Redirecting STDIN to a file
 Redirecting STDOUT to a file (> to overwrite)
 ---------------------------------------------
 
-  bash $ echo “Redirect stdout to a file” >file.text
+  bash $ echo "Redirect stdout to a file" >file.text
   bash $ cat file.text
   Redirect stdout to a file
 
