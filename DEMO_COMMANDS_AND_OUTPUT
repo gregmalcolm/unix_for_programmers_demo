@@ -1,0 +1,738 @@
+Presentation slides and list of commands are available at:
+https://github.com/gregmalcolm/unix_for_programmers_demo
+git://gist.github.com/1156222.git
+
+NOTE: I used a Mac with OSX for this demo. Other unixes will differ slightly in behavior!
+
+===========
+Preparation
+===========
+
+If you're running the scripts in my demo, make sure they're set to executable
+state before running them. These commands will do this for you if run
+from the same folder:
+
+  bash $ chmod +x *.rb
+  bash $ chmod +x *.sh
+
+=======
+Streams
+=======
+
+File streams
+------------
+
+  bash $ irb
+  echo "Sample input" > file2.in
+  ruby-1.9.2-p290 :001 > f = File.open('file1.out', 'w')
+   => #<File:file1.out> 
+  ruby-1.9.2-p290 :002 > f.puts "some text"
+   => nil 
+  ruby-1.9.2-p290 :004 > f2 = File.open('file2.in', 'r')
+   => #<File:file2.in> 
+  ruby-1.9.2-p290 :005 > f.fileno
+   => 3                              <--- Why does it start at 3? Answer 0 through 2 reserved by STDIN, STDOUT and STDERR 
+  ruby-1.9.2-p290 :006 > f2.fileno
+   => 4 
+  ruby-1.9.2-p290 :007 > f2.gets
+   => "Sample input\n"
+  exit
+  bash $ cat file1.out 
+  some text
+
+Reading STDIN form the keyboard
+-------------------------------
+
+  bash $ wc -l
+  green
+  eggs
+  and 
+  ham     <-- CTRl+D to finish keybaord entry!
+         4
+  bash $
+
+STDOUT
+------
+
+  bash $ ls
+  DEMO_COMMANDS_AND_OUTPUT	file2.in			monitor.sh			zombie.rb
+  README				fork_block.rb			pipery.rb
+  commands.text			fork_if.rb			seuss.text
+  file1.out			monitor.rb			unix_for_programmers.key
+
+STDERR (looks like STDOUT I know, but ruby with a bad argument will output to STDERR)
+-------------------------------------------------------------------------------------
+
+  bash $ ruby --make-presentation-for-me
+  ruby: invalid option --make-presentation-for-me  (-h will show valid options) (RuntimeError)
+
+Redirecting STDIN to a file
+---------------------------
+
+  bash $ cat seuss.text
+  one fish
+  two fish
+  red fish
+  blue fish
+  bash $ wc -w <seuss.text
+         8
+
+Redirecting STDOUT to a file (> to overwrite)
+---------------------------------------------
+
+  bash $ echo “Redirect stdout to a file” >file.text
+  bash $ cat file.text
+  Redirect stdout to a file
+
+Redirecting STDOUT to a file (>> to append)
+-------------------------------------------
+
+  bash $ echo "Redirect and append stdout">>file.text
+  bash $ cat file.text
+  Redirect stdout to a file
+  Redirect and append stdout
+
+Redirecting STDERR to a file (2> to overwrite)
+----------------------------------------------
+
+  bash $ cat err.text 
+  ruby: No such file or directory -- Redirect stderr to a file (LoadError)
+  bash $ cat err.text 
+  ruby: No such file or directory -- Redirect stderr to a file (LoadError)
+  ruby: No such file or directory -- or append to a file (LoadError)
+
+NOTE: The 2 in 2> is for FileDescriptor 2. You can redirct STDOUT with 1>
+if you want to. But it defaults to STDOUT if just use >.
+
+Redirecting file descriptors - (STDOUT to STDERR)
+-------------------------------------------------
+
+  bash $ echo "ERROR: Out of jello" >&2
+  ERROR: Out of jello
+
+(It went to STDERR. Trust me!)
+
+Opening a file stream from BASH and writing to it
+-------------------------------------------------
+
+  bash $ # kinda like f=File.open in ruby. Redirecting exec is like saying
+  bash $ # "Redirect FD3 in this process to file.out"
+  bash $ exec 3> file.out  
+  bash $ echo 'Armadillos!' >&3
+  bash $ # Redirct FD3 to nothing. Closes FD3 file handle.
+  bash $ 3>&-
+  bash $ cat file.out
+  Armadillos!
+
+==========
+Prepration
+==========
+
+Make sure all code samples are executable. If you checked out my code samples from github, run this command to
+make sure scripts can be run:
+
+bchmod +x
+
+=======
+Forking
+=======
+
+Process monitoring
+------------------
+
+For this demo I opened two unix terminals, with one "spying" on the others processes. The steps to do this on a non Mac os
+may be slightly different.
+
+1) Run echo $$ in both windows:
+
+  bash $ echo $$
+  80855
+
+Each window pid should be diffrent.
+
+2) Install pstree and watch:
+Note: Most linux distros come with watch baked in.
+
+For the mac I use homebrew:
+
+  bash $ brew install pstree
+  ==> Downloading ftp://ftp.thp.uni-duisburg.de/pub/source/pstree-2.32.tar.gz
+  File already downloaded and cached to /Users/greg/Library/Caches/Homebrew
+  ==> make pstree
+  /usr/local/Cellar/pstree/2.32: 2 files, 24K, built in 2 seconds
+
+  bash $ brew install watch
+  ==> Downloading http://procps.sourceforge.net/procps-3.2.8.tar.gz
+  File already downloaded and cached to /Users/greg/Library/Caches/Homebrew
+  ==> make watch PKG_LDFLAGS=-Wl
+  /usr/local/Cellar/watch/3.2.8: 5 files, 48K, built in 2 seconds
+
+3) Start monitoring
+
+My other window happens to have a PID of 81294
+
+I could spy on pid 81294 with ps, but its not quite in the format I want on the mac:
+
+  bash $ ps ax | tail
+  81464   ??  Ss     1:10.09 /Library/Printers/hp/Frameworks/HPDeviceModel.framework/Runtime/hpdot4d.app/Contents/MacOS/hpdot4d -x 1008 32273 639893504 255 255 255
+  81474   ??  S      0:00.25 /System/Library/Image Capture/Support/Image Capture Extension.app/Contents/MacOS/Image Capture Extension -psn_0_1630606
+  81687   ??  S      2:46.96 /Applications/Keynote.app/Contents/MacOS/Keynote -psn_0_1655188
+  82028   ??  SNs    0:00.11 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mdworker MDSImporterWorker com.apple.Spotlight.ImporterWorker.89
+  80854 s000  Ss     0:00.03 login -pf greg
+  80855 s000  S      0:00.55 -bash
+  82033 s000  R+     0:00.00 ps ax
+  82034 s000  R+     0:00.00 -bash
+  81293 s001  Ss     0:00.02 login -pf greg
+  81294 s001  S+     0:00.15 -bash
+
+Pstree shows which a tree forking. I'm going to get it to just show me the branch for 81294:
+
+  bash $ pstree -p 81294
+  -+= 00001 root /sbin/launchd
+   \-+= 00105 greg /sbin/launchd
+     \-+= 00144 greg /Applications/Utilities/Terminal.app/Contents/MacOS/Terminal -psn_0_53261
+       \-+= 81293 root login -pf greg
+         \--= 81294 greg -bash
+
+When we create process forks inthat window, this will show up too!
+
+Btw, notice we see the full forking history!
+
+00001 shows that first process was root running the launchd daemon. Presumably this was a special case, and not a normal fork operation.
+00105 shows launchd changing user to greg
+00144 shows me launchd forking off and starting the Terminal program
+81293 shows the process forking so I can log in
+81294 shows the process forking again to last the bash environment so I can start running commmands.
+
+If I run pstree through watch the tree will update every 2 seconds:
+
+  bash $ watch "pstree -p 81294"
+  Every 2.0s: pstree -p 81294                                         Fri Aug 19 00:38:50 2011
+
+  -+= 00001 root /sbin/launchd
+   \-+= 00105 greg /sbin/launchd
+     \-+= 00144 greg /Applications/Utilities/Terminal.app/Contents/MacOS/Terminal -psn_0_53261
+       \-+= 81293 root login -pf greg
+         \--= 81294 greg -bash
+
+Job done! Now when we run commands in the other window and keep checking on this window to see the effect on the process tree.
+
+Creating a child process fork by running a command as a background task
+-----------------------------------------------------------------------
+
+For this demo I'm going use "tail -f" to continuously show me updates to the bottom of the system log:
+
+  bash $ tail -f /var/log/system.log &
+  [1] 82463
+  bash $ Aug 19 00:30:56 Greg-Malcolms-MacBook-Pro newsyslog[82027]: logfile turned over
+  Aug 19 00:43:20 Greg-Malcolms-MacBook-Pro login[82321]: USER_PROCESS: 82321 ttys002
+
+  bash $
+
+NOTE: If you ever wanted something to run in the background but you forgot the & you can still fix it by doing this:
+
+  bash $ tail -f /var/log/system.log
+  Aug 19 00:30:56 Greg-Malcolms-MacBook-Pro newsyslog[82027]: logfile turned over
+  Aug 19 00:43:20 Greg-Malcolms-MacBook-Pro login[82321]: USER_PROCESS: 82321 ttys002
+  ^Z       <---- Ctrl+Z
+  [1]+  Stopped                 tail -f /var/log/system.log
+  bash $ bg
+  [1]+ tail -f /var/log/system.log &
+     
+When a program is in the suspended state from pressing Ctrl+Z you could alternatively use fg to make the task go back into the foreground.
+
+Anyway, forking occurred:
+
+-+= 00001 root /sbin/launchd
+ \-+= 00105 greg /sbin/launchd
+   \-+= 00144 greg /Applications/Utilities/Terminal.app/Contents/MacOS/Terminal -psn_0_53261
+     \-+= 81293 root login -pf greg
+       \-+= 81294 greg -bash
+         \--= 82686 greg tail -f /var/log/system.log   <-------
+
+82686 is now a child of 81294. When it forked it was a clone of 81294, but it changed the program by doing something like this: 
+  "exec tail -f /var/log/system.log"
+
+Now that we've started our child process we can leave it to do what it wants, then wait for the status by running wait:
+
+  bash $ wait 82686
+
+It's going to wait there until the "tail" process finishes. Lets help it reach its demise by opening a 3rd window and putting the child process out of its misery:
+
+  bash $ kill 82686
+  bash $
+
+You did it? You monster!
+
+Now check back with the waiting window:
+
+  bash $ wait 82686
+  Aug 19 00:57:33 Greg-Malcolms-MacBook-Pro login[83245]: USER_PROCESS: 83245 ttys003
+  [1]+  Terminated              tail -f /var/log/system.log
+
+Running fork from ruby with a block
+-----------------------------------
+
+Note: most of thess fork code samples are "borrowed" from various ruby doc sites found online.
+
+  bash $ cat fork_block.rb 
+  #!/usr/bin/env ruby
+
+  def fork_it
+    fork do
+      3.times {|i| puts "Child (PID=#{$$}): #{i}" }
+    end
+    3.times {|i| puts "Parent: (PID=#{$$}) #{i}" }
+    Process.wait
+  end
+
+  fork_it
+
+When fork is called the process is cloned so there are 2 copys of the program running at the same time. 
+The child proc will run the code in the fork block and exit. The parent will run the rest of the code until
+it gets to "wait" at which point it will wait for the child process to finish.
+
+When running it is possible for either the parent or the child to finish first. Although the parent usually wins
+when I run it:
+
+  bash $ ./fork_block.rb 
+  Parent: (PID=83651) 0
+  Parent: (PID=83651) 1
+  Parent: (PID=83651) 2
+  Child (PID=83652): 0
+  Child (PID=83652): 1
+  Child (PID=83652): 2
+
+  bash $ ./fork_block.rb 
+  Child (PID=83652): 0
+  Child (PID=83652): 1
+  Child (PID=83652): 2
+  Parent: (PID=83651) 0
+  Parent: (PID=83651) 1
+  Parent: (PID=83651) 2
+
+
+Running fork from ruby without a block
+--------------------------------------
+
+This version is a little more confusing to mentally parse:
+
+  bash $ cat ./fork_if.rb 
+  #!/usr/bin/env ruby
+
+  puts "Parent pid is #{$$}"
+  unless fork
+    puts "In child process. Pid is now #{$$}"
+    exit 42
+  end
+
+  child_pid = Process.wait
+  puts "Child (pid #{child_pid}) terminated with status #{$?.exitstatus}"
+
+for the parent the fork method return the child pid. For the child it returns nil.
+So when the fork occurs and the process splits in 2 the child will run the code in the 'unless' part
+and the parent will run the code and the 'unless'.
+
+The keynote presentation contains an animated simulation of how this works.
+
+Here's the result:
+
+  bash $ ./fork_if.rb 
+  Parent pid is 84070
+  In child process. Pid is now 84071
+  Child (pid 84071) terminated with status 42
+
+Let's make Zombies!
+-------------------
+
+Whats the worst that could happen?
+
+  bash $ ./fork_if.rb 
+  Parent pid is 84070
+  In child process. Pid is now 84071
+  Child (pid 84071) terminated with status 42
+  bash $ cat ./zombie.rb 
+  #!/usr/bin/env ruby
+
+  def zombie
+    fork do
+      # Exit immedietely
+    end
+    sleep 60
+    Process.wait
+  end
+
+  zombie
+
+  bash $
+
+In this example on forking the child will exit out immedietly, but the parent will be stuck in suspended animation
+running "sleep" for a minute. As noone is there to process the "wait" call, the process will be stuck in zombie state
+until the parent stops napping.
+
+  bash $ ./zombie.rb &
+  [1] 84290
+
+Lets take a look at our pstree monitor:
+
+  -+= 00001 root /sbin/launchd
+   \-+= 00105 greg /sbin/launchd
+     \-+= 00144 greg /Applications/Utilities/Terminal.app/Contents/MacOS/Terminal -psn_0_53261
+       \-+= 81293 root login -pf greg
+         \-+= 81294 greg -bash
+           \-+= 84290 greg ruby ./zombie.rb
+             \--- 84293 greg (ruby)   <-------
+
+On the mac a process showing in parenthesesis indicates a zombie, so looks like (ruby) just joined the ranks for the living dead.
+
+Zombies are really obvious in the "ps" table too. They have a Z in the status column:
+
+  bash $ ps ax | tail
+  81294 s001  S      0:00.22 -bash
+  84466 s001  R      0:00.02 ruby ./zombie.rb
+  84467 s001  Z      0:00.00 (ruby)        <--------
+  84468 s001  R+     0:00.00 ps ax
+  84469 s001  S+     0:00.00 tail
+  82321 s002  Ss     0:00.02 login -pf greg
+  82322 s002  S      0:00.11 -bash
+  82450 s002  S+     0:00.00 less commands.text
+  83245 s003  Ss     0:00.01 login -pf greg
+  83246 s003  S+     0:00.10 -bash
+
+
+
+=====
+Pipes
+=====
+
+Pipes makes use of both streams and forking. Heres how...
+
+monitor.sh script
+-----------------
+
+For some of these demo steps I need a program that will do something with STDIN, STDOUT and STDERR together. 
+Here is the bash shell version:
+
+  bash $ cat monitor.sh 
+  #!/bin/bash
+
+  while read line
+  do
+    input="$input $line"
+  done
+
+  echo $input
+  if [ "$1" != "" ]; then
+    echo "Warning: Did not understand argument '$1'!" >&2
+  fi
+
+Btw, the top line (#!/bin/bash) is called a shebang. It tells the unix shell which program to use to execute the script.
+Without it we'ed have to run the script like this:
+
+  bash $ /bin/bash monitor.sh 
+
+The program reads from STDIN with the "read" command and outputs it out again to STDOUT as a space separated string.
+If an argument is passed in the program will always complain about it, issue output to STDERR. 
+
+I also provided a ruby version that works exactly the same way:
+
+  bash $ cat monitor.rb 
+  #!/usr/bin/env ruby
+
+  while line = STDIN.gets
+    input="#{input} #{line}".strip
+  end
+
+  puts input
+  if ARGV && ARGV[0]
+    STDERR.puts "Warning: Did not understand argument '#{ARGV[0]}'!"
+  end
+
+No pipes
+--------
+
+  bash $ ./monitor.sh
+  Shaving              <
+  is                   <--- STDIN
+  boring               <
+  Shaving is boring      <--- STDOUT
+  bash $
+
+2 processes joined by a pipe
+----------------------------
+
+  bash $ ls | ./monitor.sh 
+  DEMO_COMMANDS_AND_OUTPUT README commands.text err.text file.out file.text file1.out file2.in fork_block.rb fork_if.rb monitor.rb monitor.sh pipery.rb seuss.text unix_for_programmers.key zombie.rb
+
+Unix piping works like this:
+
+* The program on the left of the pipe symbol feeds its STDOUT into the program on the right of the pipe symbol
+* The program on the right of the pipe uses the STDOUT it has been passed and reads it in as STDIN
+
+So ls outputed the directory listing. Monitor.sh received it as STDIN and processed it in place of the normal keyboard entry.
+
+2 procs and a STDERR
+--------------------
+
+STDERR is not used in the pipeline. Anything written to a STDERR stream in the pipeline just goes to the console as normal, or anywhere it gets redirected to.
+
+We'll feed -moo to the monitor, which will trigger an error message in STDERR:
+
+  bash $ ls | ./monitor.sh -moo
+  DEMO_COMMANDS_AND_OUTPUT README commands.text err.text file.out file.text file1.out file2.in fork_block.rb fork_if.rb monitor.rb monitor.sh pipery.rb seuss.text unix_for_programmers.key zombie.rb
+  Warning: Did not understand argument '-moo'!   <--- STDERRR
+
+3 procs
+-------
+
+A pipeline can have mutliple programs particating:
+
+  bash $ ls | ./monitor.sh | tr [a-z] [A-Z]
+  DEMO_COMMANDS_AND_OUTPUT README COMMANDS.TEXT ERR.TEXT FILE.OUT FILE.TEXT FILE1.OUT FILE2.IN FORK_BLOCK.RB FORK_IF.RB MONITOR.RB MONITOR.SH PIPERY.RB SEUSS.TEXT UNIX_FOR_PROGRAMMERS.KEY ZOMBIE.RB
+
+In this case tr transforms any lowercase characters replacing them with uppercase characters.
+So ls sends the directory listing to monitor. Monitor makes it one string. tr changes the case.
+
+bash $ echo "There is" | ./monitor.rb -no 2>>log.err | ./monitor.rb -spoon 2>>log.err
+bash $ cat log.err
+Warning: Did not understand argument '-no'!
+Warning: Did not understand argument '-spoon'!
+
+creating one error log for the whole pipeline
+---------------------------------------------
+
+Put all errors in log.err:
+
+  bash $ echo "There is" | ./monitor.rb -no 2>>log.err | ./monitor.rb -spoon 2>>log.err
+  There is
+  bash $ cat log.err 
+  Warning: Did not understand argument '-no'!
+  Warning: Did not understand argument '-spoon'!
+
+Muffling the output
+-------------------
+
+  bash $ echo "There is" | ./monitor.rb -no 2>>log.err | ./monitor.rb -spoon 2>>log.err >/dev/null
+  bash $
+
+In unix whenever you redirect something to /dev/null its the same as sending it into a blackhole...
+
+Putting it all together
+-----------------------
+
+There is a fantastic pipe recipe on the wikipedia page for unix pipelines:
+http://en.wikipedia.org/wiki/Pipeline_(Unix)
+
+  bash $ curl "http://en.wikipedia.org/wiki/Pipeline_(Unix)" |
+    sed 's/[^a-zA-Z ]/ /g' |
+    tr 'A-Z ' 'a-z\n' |
+    grep '[a-z]' |
+    sort -u |
+    comm -23 - <(sort /usr/share/dict/words) |
+    less
+  bash $
+
+curl downloads the wikipedia page
+sed edits the stream, rejecting everything that isn't an alphanumeric word
+tr transforms uppercase chars to lowercase and spaces to carriage returns
+grep rejects all items that are not works (the last step created a lot of blank lines)
+sort sorts the words into order and only keeps unique enties
+comm looks for common words between STDIN and a dictionary, only using words that exist in STDIN
+less for your viewing pleasure
+
+Try it!
+
+Surround the first word from STDIN in div tags
+----------------------------------------------
+
+  bash $ ls | ruby -e 'puts "<div>#{STDIN.gets.chomp}</div>"'
+  <div>DEMO_COMMANDS_AND_OUTPUT</div>
+
+Same again, but get all of STDIN
+--------------------------------
+
+Ruby has a handy -n option which surrounds the expression with a block that iterates through STDIN.
+The content of the block is available through #_
+
+  bash $ ls | ruby -ne 'puts "<div>#{$_.chomp}</div>"'
+  <div>DEMO_COMMANDS_AND_OUTPUT</div>
+  <div>README</div>
+  <div>commands.text</div>
+  <div>err.text</div>
+  <div>file.out</div>
+  <div>file.text</div>
+  <div>file1.out</div>
+  <div>file2.in</div>
+  <div>fork_block.rb</div>
+  <div>fork_if.rb</div>
+  <div>log.err</div>
+  <div>monitor.rb</div>
+  <div>monitor.sh</div>
+  <div>pipery.rb</div>
+  <div>seuss.text</div>
+  <div>unix_for_programmers.key</div>
+  <div>zombie.rb</div>
+
+Every process in the pipeline is alive!
+---------------------------------------
+
+It's easy to get the delusion that each command in the pipeline runs to completion
+and passes on its results to the next program. Not true! Items in the pipeline are working
+together simulaneously. To prove it, lets create a pipeline that interacts with text entered into
+STDIN:
+
+  bash $ cat | tr [a-z] [A-Z]
+  It's
+  IT'S
+  alive
+  ALIVE
+  and
+  AND
+  kicking!
+  KICKING!
+
+Creating a pipeline in ruby
+---------------------------
+
+This demonstates how you can fork a process in ruby and communicate through
+pipes. We create to pipe streams, one for input and one for ouput.
+When fork clones the proces and the program the child will write into one end of the
+pipe and parent will listen on the other side.
+
+This of course takes advantage of how forked processes share file descriptors.
+
+  bash $ cat pipery.rb 
+  #!/usr/bin/env ruby
+
+  def pipe_it
+    r, w = IO.pipe
+    if fork
+      # parent
+      w.close
+      puts "Parent got: <#{r.read}>"
+      r.close
+      Process.wait
+    else
+      #child
+      r.close
+      puts "Sending message to parent"
+      w.write "Hi Dad"
+      w.close
+    end
+  end
+
+  pipe_it
+  bash $ ./pipery.rb 
+  Sending message to parent
+  Parent got: <Hi Dad>
+
+================
+Unix Integration
+================
+
+Theres lots of ways you can integrate unix features into a Ruby app
+
+fileutils
+---------
+
+If you don't want to tie your app to any particular OS then make use of this library
+
+  ruby-1.9.2-p290 :001 > require 'fileutils'
+   => true 
+  ruby-1.9.2-p290 :002 > FileUtils.pwd
+   => "/Users/greg/git/unix_for_programmers_demo" 
+  ruby-1.9.2-p290 :003 > FileUtils.cd '/'
+   => nil 
+  ruby-1.9.2-p290 :004 > FileUtils.cd '/Users/greg/git/unix_for_programmers_demo'
+   => nil 
+
+This should work even from Windows!
+
+Shelling into unix through backticks
+------------------------------------
+
+  ruby-1.9.2-p290 :005 > host = `hostname -f`
+   => "Greg-Malcolms-MacBook-Pro.local\n" 
+  ruby-1.9.2-p290 :006 > host = `hostname -s`
+   => "Greg-Malcolms-MacBook-Pro\n" 
+  ruby-1.9.2-p290 :007 > `ls`
+   => "DEMO_COMMANDS_AND_OUTPUT\nREADME\ncommands.text\nerr.text\nfile.out\nfile.text\nfile1.out\nfile2.in\nfork_block.rb\nfork_if.rb\nlog.err\nmonitor.rb\nmonitor.sh\npipery.rb\nseuss.text\nunix_for_programmers.key\nzombie.rb\n" 
+  ruby-1.9.2-p290 :008 > puts `ls`
+  DEMO_COMMANDS_AND_OUTPUT
+  README
+  commands.text
+  err.text
+  file.out
+  file.text
+  file1.out
+  file2.in
+  fork_block.rb
+  fork_if.rb
+  log.err
+  monitor.rb
+  monitor.sh
+  pipery.rb
+  seuss.text
+  unix_for_programmers.key
+  zombie.rb
+   => nil 
+   
+Any command called through backticks creates a unix fork to run the actual command. There is
+something similar in unix itself, mostly used for expression substitution through process forking. Note the unix equivilent
+only works if a program is called. commands like "cd" or "pwd" don't count.
+
+So from unix this may give you an error:
+  bash $ `pwd`
+  -bash: /Users/greg/git/unix_for_programmers_demo: is a directory
+
+but this will be accepted
+
+  bash $ `echo pwd`
+  /Users/greg/git/unix_for_programmers_demo
+
+This seems t work too:
+  bash $ echo `pwd`
+  /Users/greg/git/unix_for_programmers_demo
+
+One useful thing about running commands in this way is you can change the directory as much as you like, it will return to
+normal when its done. Eg:
+
+  ruby-1.9.2-p290 :008 > require 'FileUtils'
+   => true 
+  ruby-1.9.2-p290 :009 > FileUtils.pwd
+   => "/Users/greg/git/unix_for_programmers_demo" 
+  ruby-1.9.2-p290 :010 > `cd ..; pwd`
+   => "/Users/greg/git\n" 
+  ruby-1.9.2-p290 :011 > FileUtils.pwd
+   => "/Users/greg/git/unix_for_programmers_demo" 
+
+Better STDOUT and STDERR handling
+---------------------------------
+
+There is one big drawback of using backticks: you can't read STDOUT and STDERR at the same time.
+
+To get around that either use the ruby library 'open3' or better yet the ruby gem 'open4'.
+I'll demonstrate the open 3 library:
+
+  ruby-1.9.2-p290 :012 > require 'open3'
+   => true 
+  ruby-1.9.2-p290 :013 > pwd = `pwd`.chomp
+   => "/Users/greg/git/unix_for_programmers_demo" 
+  ruby-1.9.2-p290 :014 > stdin, stdout, stderr, thread = Open3.popen3("#{pwd}/monitor.rb -lesscowbell")
+   => [#<IO:fd 4>, #<IO:fd 5>, #<IO:fd 7>, #<Thread:0x00000100a172e0 run>] 
+  ruby-1.9.2-p290 :015 > stdin.puts "eggs"
+   => nil 
+  ruby-1.9.2-p290 :016 > stdin.puts "beans"
+   => nil 
+  ruby-1.9.2-p290 :017 > stdin.close
+   => nil 
+  ruby-1.9.2-p290 :018 > stdout.gets
+   => "eggs beans\n" 
+  ruby-1.9.2-p290 :019 > stderr.gets
+   => "Warning: Did not understand argument '-lesscowbell'!\n"
+
+Note the filedescripts shown are NOTE 0, 1 or 2. I belive thats because popen3 creates copies of the 
+0, 1 and 2 file descriptors. Which means its still STDIN, STDOUT and STDERR, but because they're copies
+you can actually close them.
+
+That's all, thanks!

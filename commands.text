@@ -1,0 +1,94 @@
+echo $$
+brew install pstree
+brew install watch
+watch pstree -p 8776
+tail -f /var/log/system.log &
+fg
+^z
+bg
+wait
+^c
+pstree -p 1234
+kill 5678
+
+mvim fork_block.rb
+./fork_block.rb
+
+mvim fork_if.rb
+./fork_if.rb
+
+mvim zombie.c
+./zombie
+^z
+ps ax
+pstree 10244
+
+mvim monitor.sh
+/bin/bash.monitor.sh
+ls -la
+chmod +x monitor.sh
+exec monitor.sh
+./monitor.sh
+./monitor.sh moo
+ls | ./monitor.sh moo
+ls | ./monitor.sh | tr [a-z] [A-Z]
+
+ps
+ps | ./monitor.rb -bleat
+
+cat seuss.text
+./monitor.rb <seuss.text | tr [a-z] [A-Z]
+
+echo "There is" | ./monitor.rb -no 2>>log.err | ./monitor.rb -spoon >/dev/null 2>>log.err
+cat log.err
+
+curl "http://en.wikipedia.org/wiki/Pipeline_(Unix)" |
+sed 's/[^a-zA-Z ]/ /g' |
+tr 'A-Z ' 'a-z\n' |
+grep '[a-z]' |
+sort -u |
+comm -23 - <(sort /usr/share/dict/words) |
+less
+
+
+ls | ruby -e 'puts "<div>#{STDIN.gets.chomp}</div>"'
+ls | ruby -ne 'puts "<div>#{$_.chomp}</div>"'
+
+cat /etc/passwd
+cat /etc/passwd | ruby -ne 'puts $1 if $_.scan(/(^[a-z]+)/).first'
+ruby -ne 'puts $1 if VARGS[0].scan(/(^[a-z]+)/).first' /etc/passwd
+
+cat | tr [a-z] [A-Z}
+
+mvim pipery.rb
+./pipery.rb
+
+irb
+require 'fileutils'
+FileUtils.pwd
+FileUtils.cd “/”
+FileUtils.cd "/Users/greg/git/unix_for_programmers_demo"
+
+`ps`
+puts `ps`
+
+exit
+
+echo `cd ..;pwd`
+$ pwd
+
+irb
+host = `hostname -f`
+host = `hostname -s`
+
+result = `echo "testing..." | ./monitor.rb -cowbell`
+
+require ‘open3’
+pwd = `pwd`.chomp
+stdin, stdout, stderr, thread = Open3.popen3("#{pwd}/monitor.rb -lesscowbell")
+stdin.puts "eggs"
+stdin.puts "beans"
+stdin.close
+stdout.gets
+stderr.gets
+thread.pid
