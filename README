@@ -4,10 +4,14 @@ Unix For Programmers Demo
 Support material for a talk on programming in a unix enviroment. Initially targetted at Ruby developers, 
 but should still be relevant to anyone who programs on the unix platform.
 
-Presentation:
-  unix_for_programmers.key
+Presentations:
+  unix_for_programmers_ruby.key
+  unix_for_programmers_python.key
 
-Commands Walkthrough:
+Ruby Walkthrough:
   https://gist.github.com/1156222
+
+Python Walkthrough
+  https://gist.github.com/1241642
 
 Also all scripts used in the demo can be found here
