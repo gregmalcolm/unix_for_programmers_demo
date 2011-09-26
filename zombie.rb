@@ -2,7 +2,7 @@
 
 def zombie
   fork do
-    # Exit immedietely
+    # Exit immediately
   end
   sleep 60
   Process.wait

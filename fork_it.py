@@ -15,6 +15,4 @@ def fork_it():
         .format(child_pid, exit_status)
 
 if __name__ == "__main__":
-  fork_it()
-
-
+    fork_it()
