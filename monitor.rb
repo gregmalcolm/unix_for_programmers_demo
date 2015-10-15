@@ -4,7 +4,7 @@ while line = STDIN.gets
   input="#{input} #{line}".strip
 end
 
-puts input
+puts "Monitored: #{input}"
 if ARGV && ARGV[0]
   STDERR.puts "Warning: Did not understand argument '#{ARGV[0]}'!"
 end
